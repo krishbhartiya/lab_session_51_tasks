@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EmotiRate - Mood-Based Rating</title>
+  <link rel="stylesheet" href="lab_session_51_tasks.css" />
+</head>
+<body>
+  <header>
+    <h1>EmotiRate: Mood-Based Product Rating</h1>
+    <input type="text" id="searchInput" placeholder="Search products..." />
+  </header>
+
+  <main id="productContainer"></main>
+
+  <!-- Template for product card -->
+  <template id="productTemplate">
+    <div class="product-card">
+      <img class="product-img" src="" alt="Product Image" />
+      <h2 class="product-name"></h2>
+      <div class="emoji-picker"></div>
+      <p class="mood-phrase"></p>
+      <button class="submit-rating">Submit Rating</button>
+      <p class="rating-feedback"></p>
+      <p class="average-rating"></p>
+      <button class="view-reviews">View Reviews</button>
+
+      <!-- Review Modal -->
+      <div class="reviews-modal hidden">
+        <div class="modal-content">
+          <span class="close-modal">&times;</span>
+          <h3>Mood Reviews</h3>
+          <div class="review-filter"></div>
+          <ul class="review-list"></ul>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // Product data with random images
+    const products = [
+      {
+        id: 101,
+        name: "Focus Booster Mug",
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlZScA4nVsX5VJbVk7dt2UBEJjj2nmRWRuSg&s"
+      },
+      {
+        id: 102,
+        name: "Noise Cancelling Headphones",
+        image: "https://cdn.shopify.com/s/files/1/0997/6284/files/Man_wearing_Defy_headphone.jpg?v=1616398752"
+      },
+      {
+        id: 103,
+        name: "Motivational Notebook",
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRB45SxXf1b8XF7JtuYmfLIcMwd_eunZOHdBw&s"
+      },
+      {
+        id: 104,
+        name: "Study LED Lamp",
+        image: "https://m.media-amazon.com/images/I/71D2YNJoNNL._AC_UF1000,1000_QL80_.jpg"
+      },
+      {
+        id: 105,
+        name: "Concentration Gummies",
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTViTQgkcuPhdAqBUGfU4yxVjro4ccAtWo_LQ&s"
+      },
+      {
+        id: 106,
+        name: "Concentration Gummies",
+        image: "https://images-cdn.ubuy.co.in/64f8c3f7917df872cd3acd44-onn-adjustable-mini-tripod-stand-for.jpg"
+      },
+      {
+        id: 107,
+        name: "Concentration Gummies",
+        image: "https://images-static.nykaa.com/media/catalog/product/c/1/c1ae303748927066012_1.jpg?tr=w-500"
+      },
+      {
+        id: 108,
+        name: "Concentration Gummies",
+        image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Bouteille.jpg/960px-Bouteille.jpg"
+      },
+      {
+        id: 109,
+        name: "Concentration Gummies",
+        image: "https://m.media-amazon.com/images/I/81kjiO4B4uL._AC_UY1100_.jpg"
+      }
+    ];
+
+    const moods = [
+      { emoji: "😍", label: "Loved it!", score: 5 },
+      { emoji: "🙂", label: "Good", score: 4 },
+      { emoji: "😐", label: "Okay", score: 3 },
+      { emoji: "😠", label: "Not great", score: 1 },
+      { emoji: "😡", label: "Terrible", score: 0 }
+    ];
+
+    const container = document.getElementById("productContainer");
+    const searchInput = document.getElementById("searchInput");
+
+    const createCard = (product) => {
+      const template = document.getElementById("productTemplate");
+      const node = template.content.cloneNode(true);
+
+      const card = node.querySelector(".product-card");
+      const img = node.querySelector(".product-img");
+      const name = node.querySelector(".product-name");
+      const emojiPicker = node.querySelector(".emoji-picker");
+      const phrase = node.querySelector(".mood-phrase");
+      const feedback = node.querySelector(".rating-feedback");
+      const avgRating = node.querySelector(".average-rating");
+      const submitBtn = node.querySelector(".submit-rating");
+      const viewReviewsBtn = node.querySelector(".view-reviews");
+      const modal = node.querySelector(".reviews-modal");
+      const closeModal = node.querySelector(".close-modal");
+      const reviewList = node.querySelector(".review-list");
+      const reviewFilter = node.querySelector(".review-filter");
+
+      img.src = product.image;
+      name.textContent = product.name;
+
+      // Emoji picker
+      moods.forEach(mood => {
+        const btn = document.createElement("button");
+        btn.textContent = mood.emoji;
+        btn.title = mood.label;
+        btn.addEventListener("click", () => {
+          selected = mood;
+          phrase.textContent = mood.label;
+          emojiPicker.querySelectorAll("button").forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+        });
+        emojiPicker.appendChild(btn);
+      });
+
+      let selected = null;
+
+      // Load and display existing ratings
+      const updateDisplay = () => {
+        const all = JSON.parse(localStorage.getItem(`ratings_${product.id}`)) || [];
+        if (all.length) {
+          const sum = all.reduce((a, b) => a + b.score, 0);
+          const avg = (sum / all.length).toFixed(1);
+          const topMood = moods.reduce((prev, curr) => {
+            const prevCount = all.filter(r => r.emoji === prev.emoji).length;
+            const currCount = all.filter(r => r.emoji === curr.emoji).length;
+            return currCount > prevCount ? curr : prev;
+          });
+          avgRating.textContent = `Average Mood: ${topMood.emoji} (${avg}/5 from ${all.length} ratings)`;
+        } else {
+          avgRating.textContent = "No ratings yet.";
+        }
+      };
+
+      updateDisplay();
+
+      submitBtn.addEventListener("click", () => {
+        if (!selected) {
+          alert("Please select a mood!");
+          return;
+        }
+        const ratings = JSON.parse(localStorage.getItem(`ratings_${product.id}`)) || [];
+        const userRated = sessionStorage.getItem(`rated_${product.id}`);
+        if (userRated) {
+          alert("You've already rated this product in this session.");
+          return;
+        }
+        const newRating = {
+          emoji: selected.emoji,
+          label: selected.label,
+          score: selected.score,
+          time: new Date().toISOString()
+        };
+        ratings.push(newRating);
+        localStorage.setItem(`ratings_${product.id}`, JSON.stringify(ratings));
+        sessionStorage.setItem(`rated_${product.id}`, "true");
+        feedback.textContent = "Thanks for rating!";
+        updateDisplay();
+      });
+
+      viewReviewsBtn.addEventListener("click", () => {
+        modal.classList.remove("hidden");
+        reviewList.innerHTML = "";
+
+        const all = JSON.parse(localStorage.getItem(`ratings_${product.id}`)) || [];
+        all.forEach(r => {
+          const li = document.createElement("li");
+          li.textContent = `${r.emoji} - ${r.label} (${timeAgo(new Date(r.time))})`;
+          reviewList.appendChild(li);
+        });
+
+        // Filter buttons
+        reviewFilter.innerHTML = "";
+        moods.forEach(m => {
+          const filterBtn = document.createElement("button");
+          filterBtn.textContent = m.emoji;
+          filterBtn.addEventListener("click", () => {
+            const filtered = all.filter(r => r.emoji === m.emoji);
+            reviewList.innerHTML = "";
+            filtered.forEach(r => {
+              const li = document.createElement("li");
+              li.textContent = `${r.emoji} - ${r.label} (${timeAgo(new Date(r.time))})`;
+              reviewList.appendChild(li);
+            });
+          });
+          reviewFilter.appendChild(filterBtn);
+        });
+      });
+
+      closeModal.addEventListener("click", () => {
+        modal.classList.add("hidden");
+      });
+
+      container.appendChild(node);
+    };
+
+    function timeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      let interval = Math.floor(seconds / 3600);
+      if (interval > 24) return `${Math.floor(interval / 24)} days ago`;
+      if (interval >= 1) return `${interval} hours ago`;
+      interval = Math.floor(seconds / 60);
+      if (interval >= 1) return `${interval} minutes ago`;
+      return "Just now";
+    }
+
+    function loadProducts() {
+      container.innerHTML = "";
+      const searchTerm = searchInput.value.toLowerCase();
+      products.filter(p => p.name.toLowerCase().includes(searchTerm)).forEach(createCard);
+    }
+
+    searchInput.addEventListener("input", loadProducts);
+
+    // Initial load
+    loadProducts();
+  </script>
+</body>
+</html>
